@@ -1,0 +1,114 @@
+Parameters:
+  AMI:
+    Type: String
+    Description: Lw custom webserver
+    Default: ami-081bb417559035fe8
+  InstanceType:
+    Type: String
+    Description: Instance type
+    Default: t2.micro
+  KeyName:
+    Type: String
+    Description: select key name 
+    Default: ARTH
+
+
+Resources:
+ VPC:
+  Type: AWS::EC2::VPC
+  Properties: 
+   CidrBlock: '10.0.0.0/16'
+   EnableDnsHostnames: true
+   EnableDnsSupport: true
+   InstanceTenancy: default
+   Tags:
+    - Key: name
+      Value: my-test-vpc
+  
+ InternetGateway:  
+  Type: AWS::EC2::InternetGateway
+  Properties: 
+   Tags: 
+   - Key: name
+     Value: my-test-IG 
+
+ VpcAttachGateway:
+   Type: AWS::EC2::VPCGatewayAttachment
+   Properties:
+     VpcId:
+        Ref: VPC
+     InternetGatewayId:
+        Ref: InternetGateway
+
+ mySubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select  [ 0, !GetAZs ]
+      Tags:
+       - Key: name
+         Value: mysubnetlab1
+
+ MyEC2Instance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref AMI
+      SubnetId: 
+           Ref: mySubnetA
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      AvailabilityZone: ap-south-1a
+      BlockDeviceMappings: 
+      - DeviceName: "/dev/sdm"
+        Ebs: 
+          VolumeType: "io1"
+          Iops: "200"
+          DeleteOnTermination: "false"
+          VolumeSize: "10"
+      - DeviceName: "/dev/sdk"
+        NoDevice: {}
+
+ MyEIP:
+  Type: AWS::EC2::EIP
+  Properties:
+    InstanceId: !Ref MyEC2Instance
+ 
+
+ myRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: VPC
+      Tags:
+       - Key: name
+         Value: routinginfratable
+
+ InternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+       RouteTableId:
+         Ref: myRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: InternetGateway
+
+ SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: mySubnetA
+      RouteTableId:
+        Ref: myRouteTable	
+Outputs:
+ PublicIP:
+   Description: The Public IP that is associated to instance
+   Value: !Ref MyEIP
+ StackVPC:
+    Description: The ID of the VPC
+    Value: !Ref VPC
+
+           
+               
