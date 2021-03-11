@@ -12,7 +12,6 @@ Parameters:
     Description: select key name 
     Default: ARTH
 
-
 Resources:
  VPC:
   Type: AWS::EC2::VPC
